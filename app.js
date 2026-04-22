@@ -884,6 +884,7 @@ function generatePlan(year, month, federalState) {
 
     const weekdays = week.days.filter(d => d.weekday < 5);
     const saturdayInWeek = week.days.find(d => d.weekday === 5);
+    const isSplitWeek = week.days.some(d => !isInTargetMonth(d.date, year, month));
     const fullVacationWeekIds = new Set(
       state.employees.filter(emp => hasVacationMonFriFullWeek(emp.id, week.days)).map(emp => emp.id)
     );
@@ -940,9 +941,11 @@ function generatePlan(year, month, federalState) {
       });
 
       const futureWeekdays = weekdays.slice(dayIndex);
-      const remainingNeedIds = state.employees
-        .filter(emp => !employeesExcludedFromAdditionalWeekdayFree.has(emp.id))
-        .filter(emp => !weekdayFreeAssigned[emp.id]);
+      const remainingNeedIds = isSplitWeek
+        ? []
+        : state.employees
+            .filter(emp => !employeesExcludedFromAdditionalWeekdayFree.has(emp.id))
+            .filter(emp => !weekdayFreeAssigned[emp.id]);
 
       let extraFreeEmployeeId = null;
       if (remainingNeedIds.length > 0) {
@@ -986,7 +989,7 @@ function generatePlan(year, month, federalState) {
       }
 
       if (workingIds.length < 3) {
-        throw new Error(`${formatDate(day.date)}: Zu wenige Mitarbeiter für diese Kalenderwoche. Feste freie Tage oder Abwesenheiten kollidieren.`);
+        throw new Error(`${formatDate(day.date)}: Zu wenige Mitarbeiter. Feste freie Tage oder Abwesenheiten kollidieren.`);
       }
 
       const lateMin = Math.min(state.settings.staffing.minLate, Math.max(1, workingIds.length - 1));
