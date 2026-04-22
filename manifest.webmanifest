@@ -1,0 +1,19 @@
+{
+  "name": "Dienstplan Generator",
+  "short_name": "Dienstplan",
+  "description": "Installierbare PWA zur Erstellung von Dienstplänen",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#4f46e5",
+  "lang": "de",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
