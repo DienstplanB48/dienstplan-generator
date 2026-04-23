@@ -660,160 +660,40 @@ function openPlanModal(id) {
 function sharePdf(id) {
   const plan = state.plans.find(p => p.id === id);
   if (!plan) return;
-
-  const holidays = new Set(plan.meta.holidays || []);
-  const rowsHtml = plan.days.map(day => {
-    const weekday = getWeekday(day.date);
-    const isSunday = weekday === 6;
-    const isHoliday = holidays.has(day.date);
-    const daySub = isSunday ? 'Sonntag' : isHoliday ? 'FT' : DAYS[weekday];
-
-    const cells = plan.employees.map(emp => {
-      const code = emp.assignments[day.date] || '';
-      const display = getPlanDisplayValue(code, day.date, plan.meta.settings.shifts, holidays);
-      const title = describeCode(code, day, plan.meta.settings.shifts, holidays);
-      return `<td title="${escapeAttr(title)}"><div class="pcell ${display.className}">${escapeHtml(display.text)}</div></td>`;
-    }).join('');
-
-    return `<tr>
-      <td class="pday">
-        <div class="pdaybox">
-          <span class="d1">${formatPlanDayLabel(day.date)}</span>
-          <span class="d2">${daySub}</span>
-        </div>
-      </td>
-      ${cells}
-    </tr>`;
-  }).join('');
-
-  const summaryHtml = plan.summary.map(row =>
-    `<tr>
-      <td>${escapeHtml(row.name)}</td>
-      <td>${formatHours(row.soll)}</td>
-      <td>${formatHours(row.ist)}</td>
-      <td>${formatSignedHours(row.delta)}</td>
-    </tr>`
-  ).join('');
-
-  const printable = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(plan.label)}</title>
-<style>
-  @page{size:A4 portrait;margin:3.5mm}
-  html,body{
-    margin:0;padding:0;background:#fff;color:#1f2937;
-    font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    -webkit-print-color-adjust:exact !important;
-    print-color-adjust:exact !important;
-  }
-  .sheet{width:100%;box-sizing:border-box}
-  .head{margin:0 0 3px 0}
-  .title{font-size:10px;font-weight:800;line-height:1.05;margin:0}
-  .sub{font-size:6.2px;color:#6b7280;line-height:1.05;margin-top:1px}
-  table{border-collapse:collapse;width:100%;table-layout:fixed}
-  .ptable{border:1px solid #8ea7ca}
-  .ptable th,.ptable td{
-    border:1px solid #8ea7ca;
-    padding:1px 2px;
-    text-align:center;
-    font-size:6.1px;
-    vertical-align:middle;
-    background:#fff;
-  }
-  .ptable thead th{
-    background:#d7e3f6;
-    font-weight:800;
-  }
-  .ptable th:first-child,.ptable td:first-child{
-    width:46px;min-width:46px;max-width:46px;
-  }
-  .pday{font-weight:700;text-align:left !important}
-  .pdaybox{display:flex;flex-direction:column;gap:0;align-items:flex-start}
-  .d1{font-size:6.1px;line-height:1}
-  .d2{font-size:5.4px;line-height:1;color:#4b5563}
-  .pcell{
-    min-width:0;
-    padding:1px 1px;
-    font-size:5.7px;
-    line-height:1.02;
-    border-radius:7px;
-    font-weight:700;
-    box-shadow:none;
-  }
-  .F{background:#dbeafe;color:#1d4ed8}
-  .S{background:#eee7ff;color:#6d28d9}
-  .FR{background:#edf0f3;color:#4b5563}
-  .U{background:#fff1c7;color:#92400e}
-  .W{background:#fee2e2;color:#b91c1c}
-  .K{background:#fecdd3;color:#be123c}
-  .H{background:#fff1c7;color:#a16207}
-  .SO{background:#dcfce7;color:#166534}
-  .empty{background:#fff;color:#9ca3af}
-  .legend{
-    display:flex;flex-wrap:wrap;gap:3px;
-    margin:3px 0 2px 0;
-    font-size:6.1px;
-  }
-  .chip{
-    display:inline-flex;align-items:center;
-    padding:1px 4px;border-radius:999px;background:#f3f4f6;font-weight:700;
-  }
-  .stable{
-    margin-top:2px;
-    border-collapse:collapse;
-  }
-  .stable th,.stable td{
-    padding:2px 3px;
-    font-size:6.2px;
-    border-bottom:1px solid #d1d5db;
-    text-align:left;
-    background:#fff;
-  }
-  .stable th{font-weight:800}
-</style>
-</head>
-<body>
-  <div class="sheet">
-    <div class="head">
-      <div class="title">${escapeHtml(plan.label)}</div>
-      <div class="sub">${escapeHtml(plan.label)} · ${escapeHtml(plan.meta.federalState)}</div>
-    </div>
-
-    <table class="ptable">
-      <thead>
-        <tr>
-          <th>Tag</th>
-          ${plan.employees.map(emp => `<th>${escapeHtml(emp.name)}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>
-        ${rowsHtml}
-      </tbody>
-    </table>
-
-    <div class="legend">
-      <span class="chip">F = Frei</span>
-      <span class="chip">U = Urlaub</span>
-      <span class="chip">W = Wunschfrei</span>
-      <span class="chip">K = Krank</span>
-      <span class="chip">FT = Feiertag</span>
-      <span class="chip">Sonntag = Sonntag</span>
-    </div>
-
-    <table class="stable">
-      <thead>
-        <tr><th>Mitarbeiter</th><th>Soll</th><th>Ist</th><th>Mehr / Minus</th></tr>
-      </thead>
-      <tbody>
-        ${summaryHtml}
-      </tbody>
-    </table>
-  </div>
-  <script>window.onload=()=>window.print()</script>
-</body>
-</html>`;
+  const printable = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(plan.label)}</title><link rel="stylesheet" href="styles.css"><style>
+@page{size:A4 portrait !important;margin:4mm !important}
+html,body{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;background:#fff !important}
+body{font-size:10px !important}
+.topbar,.app-header,.bottom-nav,.right-actions,.no-print{display:none !important}
+.main-content,.content{padding:0 !important;margin:0 !important}
+.card{box-shadow:none !important;border:0 !important;margin:0 !important;padding:0 !important;background:#fff !important}
+.section-title{margin:0 0 3px 0 !important;align-items:flex-start !important}
+.section-title h2,.section-title h3{font-size:10px !important;line-height:1.05 !important;margin:0 !important}
+.muted{font-size:6.2px !important;line-height:1 !important}
+.legend{font-size:6.2px !important;gap:3px !important;margin:4px 0 0 0 !important}
+.badge{padding:1px 4px !important;font-size:6.2px !important;border-radius:999px !important}
+.plan-table-wrap{overflow:visible !important}
+.plan-table{table-layout:fixed !important;width:100% !important;min-width:0 !important;border-collapse:collapse !important;border-spacing:0 !important;border:1px solid #8ea7ca !important;background:#fff !important}
+.plan-table th,.plan-table td{padding:1px 2px !important;font-size:6.0px !important;border:1px solid #8ea7ca !important;text-align:center !important;background:#fff !important}
+.plan-table thead th{background:#d7e3f6 !important;color:#1f2937 !important;font-weight:800 !important}
+.plan-table th:first-child,.plan-table td:first-child{width:46px !important;min-width:46px !important;max-width:46px !important}
+.plan-table tr[style*="background:#d7dde7"] td,.plan-table tr[style*="background:#eef4ff"] td,.plan-table tr[style*="background:#fef3c7"] td{background:#fff !important}
+.plan-header-date{display:flex !important;flex-direction:column !important;gap:0 !important;align-items:flex-start !important}
+.plan-header-date span:first-child{font-size:6px !important;line-height:1 !important;font-weight:700 !important}
+.plan-header-date span:last-child{font-size:5.4px !important;line-height:1 !important;color:#4b5563 !important;font-weight:600 !important}
+.plan-cell{min-width:0 !important;padding:1px 1px !important;font-size:5.6px !important;line-height:1.02 !important;border-radius:7px !important;font-weight:700 !important;box-shadow:none !important}
+.plan-cell.F{background:#dbeafe !important;color:#1d4ed8 !important}
+.plan-cell.S{background:#eee7ff !important;color:#6d28d9 !important}
+.plan-cell.FR{background:#edf0f3 !important;color:#4b5563 !important}
+.plan-cell.U{background:#fff1c7 !important;color:#92400e !important}
+.plan-cell.W{background:#fee2e2 !important;color:#b91c1c !important}
+.plan-cell.K{background:#fecdd3 !important;color:#be123c !important}
+.plan-cell.H{background:#fff1c7 !important;color:#a16207 !important}
+.plan-cell.SO{background:#dcfce7 !important;color:#166534 !important}
+.plan-cell.empty{background:#fff !important;color:#9ca3af !important}
+.summary-table{width:100% !important;border-collapse:collapse !important;margin-top:3px !important;page-break-inside:avoid !important}
+.summary-table th,.summary-table td{padding:2px 3px !important;font-size:6.2px !important;border-bottom:1px solid #d1d5db !important;background:#fff !important}
+</style></head><body><main class="main-content">${renderPlanPreview(plan)}</main><script>window.onload=()=>window.print()</script></body></html>`;
   const win = window.open('', '_blank');
   win.document.write(printable);
   win.document.close();
