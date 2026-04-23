@@ -493,12 +493,13 @@ function renderGenerateTab() {
         </label>
       </div>
       <div class="legend">
-        <span class="badge">F = Früh</span>
-        <span class="badge">S = Spät</span>
-        <span class="badge">FR = Frei</span>
+        <span class="badge">F = Frühschicht</span>
+        <span class="badge">S = Spätschicht</span>
+        <span class="badge">Frei = Freier Tag</span>
         <span class="badge">U = Urlaub</span>
         <span class="badge">W = Wunschfrei</span>
         <span class="badge">K = Krank</span>
+        <span class="badge">FT = Feiertag</span>
         <span class="badge">SO = Sondertag</span>
       </div>
       <div class="right-actions" style="margin-top:12px">
@@ -542,6 +543,8 @@ function renderValidation(result) {
   `;
 }
 
+// ── Plan Table Layout ──────────────────────────────────────────────────────────
+
 function renderPlanPreview(plan, latest = false) {
   return `
     <div class="card">
@@ -552,13 +555,15 @@ function renderPlanPreview(plan, latest = false) {
         </div>
       </div>
       <div class="plan-table-wrap">${renderPlanTable(plan)}</div>
-      <div class="legend">
-        <span class="badge">F = Frei</span>
-        <span class="badge">U = Urlaub</span>
-        <span class="badge">W = Wunschfrei</span>
-        <span class="badge">K = Krank</span>
-        <span class="badge">FT = Feiertag</span>
-        <span class="badge">Sonntag = Sonntag</span>
+      <div class="legend" style="margin-top:12px">
+        <span class="badge plan-legend-F">F = Frühschicht</span>
+        <span class="badge plan-legend-S">S = Spätschicht</span>
+        <span class="badge plan-legend-FR">Frei = Freier Tag</span>
+        <span class="badge plan-legend-U">U = Urlaub</span>
+        <span class="badge plan-legend-W">W = Wunschfrei</span>
+        <span class="badge plan-legend-K">K = Krank</span>
+        <span class="badge plan-legend-H">FT = Feiertag</span>
+        <span class="badge plan-legend-SO">SO = Sondertag</span>
       </div>
       <div style="height:14px"></div>
       ${renderSummaryTable(plan)}
@@ -568,12 +573,20 @@ function renderPlanPreview(plan, latest = false) {
 
 function renderPlanTable(plan) {
   const holidays = new Set(plan.meta.holidays || []);
+  const shifts = plan.meta.settings.shifts;
+
   return `
-    <table class="plan-table" style="table-layout:fixed;width:100%">
+    <table class="plan-table">
       <thead>
         <tr>
-          <th style="min-width:80px">Tag</th>
-          ${plan.employees.map(emp => `<th><div class="plan-header-date"><span>${escapeHtml(emp.name)}</span></div></th>`).join('')}
+          <th class="plan-th-date">Datum</th>
+          ${plan.employees.map(emp => `
+            <th class="plan-th-emp">
+              <div class="plan-emp-header" style="border-top:3px solid ${escapeAttr(emp.color)}">
+                ${escapeHtml(emp.name)}
+              </div>
+            </th>
+          `).join('')}
         </tr>
       </thead>
       <tbody>
@@ -581,22 +594,33 @@ function renderPlanTable(plan) {
           const weekday = getWeekday(day.date);
           const isSunday = weekday === 6;
           const isSaturday = weekday === 5;
-          const isHoliday = holidays.has(day.date);
-          const rowStyle = isSunday
-            ? 'background:#d7dde7;'
-            : isSaturday
-              ? 'background:#eef4ff;'
-              : isHoliday
-                ? 'background:#fef3c7;'
-                : '';
-          const daySub = isSunday ? 'Sonntag' : isHoliday ? 'FT' : DAYS[weekday];
-          return `<tr style="${rowStyle}">
-            <td style="font-weight:700"><div class="plan-header-date"><span>${formatPlanDayLabel(day.date)}</span><span>${daySub}</span></div></td>
+          const isHoliday = holidays.has(day.date) && !isSunday;
+
+          const rowClass = isSunday ? 'plan-row-sunday'
+            : isSaturday ? 'plan-row-saturday'
+            : isHoliday ? 'plan-row-holiday'
+            : 'plan-row-weekday';
+
+          const d = new Date(day.date + 'T12:00:00');
+          const dayNum = String(d.getDate()).padStart(2, '0');
+          const monthFull = d.toLocaleDateString('de-DE', { month: 'long' });
+          const dayAbbr = isSunday ? 'So' : DAYS[weekday];
+          const holidayMarker = isHoliday ? ' · FT' : '';
+
+          return `<tr class="${rowClass}">
+            <td class="plan-td-date">
+              <div class="plan-date-cell">
+                <span class="plan-date-main">${dayNum}. ${escapeHtml(monthFull)}</span>
+                <span class="plan-date-sub">${dayAbbr}${holidayMarker}</span>
+              </div>
+            </td>
             ${plan.employees.map(emp => {
               const code = emp.assignments[day.date] || '';
-              const display = getPlanDisplayValue(code, day.date, plan.meta.settings.shifts, holidays);
-              const title = describeCode(code, day, plan.meta.settings.shifts, holidays);
-              return `<td title="${escapeAttr(title)}"><div class="plan-cell ${display.className}" style="min-width:56px;font-size:0.72rem;line-height:1.15">${escapeHtml(display.text)}</div></td>`;
+              const display = getPlanDisplayValue(code, day.date, shifts, holidays);
+              const title = describeCode(code, day, shifts, holidays);
+              return `<td class="plan-td-cell" title="${escapeAttr(title)}">
+                <div class="plan-cell ${display.className}">${escapeHtml(display.text)}</div>
+              </td>`;
             }).join('')}
           </tr>`;
         }).join('')}
@@ -674,7 +698,7 @@ function openPlanModal(id) {
 function sharePdf(id) {
   const plan = state.plans.find(p => p.id === id);
   if (!plan) return;
-  const printable = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(plan.label)}</title><link rel="stylesheet" href="styles.css"><style>@page{size:A4 landscape;margin:8mm} body{font-size:10px} .card{box-shadow:none;border:1px solid #dbe2ea} .plan-table{table-layout:fixed;width:100%;min-width:0!important} .plan-table th,.plan-table td{padding:4px!important;font-size:10px!important} .plan-table th:first-child,.plan-table td:first-child{min-width:72px!important;max-width:72px!important} .plan-cell{min-width:0!important;font-size:9px!important;line-height:1.15;padding:2px 3px} .summary-table th,.summary-table td{padding:4px 6px!important;font-size:10px!important} .legend{font-size:10px!important} .no-print{display:none!important}</style></head><body><main class="main-content">${renderPlanPreview(plan)}</main><script>window.onload=()=>window.print()</script></body></html>`;
+  const printable = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(plan.label)}</title><link rel="stylesheet" href="styles.css"><style>@page{size:A4 landscape;margin:8mm} body{font-size:10px} .card{box-shadow:none;border:1px solid #dbe2ea} .no-print{display:none!important} .plan-table-wrap{overflow:visible}</style></head><body><main class="main-content">${renderPlanPreview(plan)}</main><script>window.onload=()=>window.print()<\/script></body></html>`;
   const win = window.open('', '_blank');
   win.document.write(printable);
   win.document.close();
@@ -774,7 +798,6 @@ function renderSettingsTab() {
   root.querySelector('#importBackupInput').addEventListener('change', importBackup);
 }
 
-
 function exportBackup() {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   downloadBlob(blob, `dienstplan-backup-${new Date().toISOString().slice(0,10)}.json`);
@@ -809,10 +832,15 @@ function hourInputGroup(key, title, values) {
   `;
 }
 
+// ── Validation ─────────────────────────────────────────────────────────────────
+
 function validatePlanInputs(year, month) {
   const errors = [];
   const warnings = [];
+  const allowSingleEarly = state.settings.staffing.allowSingleEarlyWhenThreePeople;
+
   if (state.employees.length < 3) errors.push('Mindestens 3 Mitarbeiter werden benötigt.');
+
   const roster = buildMonthContext(year, month);
   roster.weeks.forEach(week => {
     const workDays = week.days.filter(d => d.weekday < 6);
@@ -820,8 +848,15 @@ function validatePlanInputs(year, month) {
       const unavailable = unavailableEmployees(day.date);
       const availableCount = state.employees.length - unavailable.length;
       if (day.weekday === 6) return;
-      if (availableCount < 3) errors.push(`${formatDate(day.date)}: Weniger als 3 verfügbare Mitarbeiter.`);
-      if (availableCount === 3) warnings.push(`${formatDate(day.date)}: Nur 3 Mitarbeiter verfügbar. Frühschicht läuft dann ggf. alleine.`);
+      if (availableCount < 3) {
+        errors.push(`${formatDate(day.date)}: Weniger als 3 verfügbare Mitarbeiter.`);
+      } else if (availableCount === 3) {
+        if (!allowSingleEarly) {
+          errors.push(`${formatDate(day.date)}: Nur 3 Mitarbeiter verfügbar – Einzelbesetzung Frühschicht laut Einstellung nicht erlaubt.`);
+        } else {
+          warnings.push(`${formatDate(day.date)}: Nur 3 Mitarbeiter verfügbar. Frühschicht läuft dann alleine.`);
+        }
+      }
     });
     const saturdays = week.days.filter(d => d.weekday === 5 && isInTargetMonth(d.date, year, month));
     saturdays.forEach(day => {
@@ -845,14 +880,15 @@ function generatePlanAction() {
     state.plans.unshift(plan);
     state.absences = [];
     renderAll();
-    setActiveTab('plans');
-    alert('Plan erstellt, gespeichert und in Pläne geöffnet. Die eingetragenen Abwesenheiten wurden danach geleert.');
+    // FIX: correct tab name 'plaene' instead of 'plans'
+    setActiveTab('plaene');
+    alert('Plan erstellt und gespeichert. Die eingetragenen Abwesenheiten wurden geleert.');
   } catch (error) {
     output.innerHTML = `<div class="error-box">${escapeHtml(error.message)}</div>`;
   }
 }
 
-
+// ── Plan Generation ────────────────────────────────────────────────────────────
 
 function generatePlan(year, month, federalState) {
   const context = buildMonthContext(year, month);
@@ -881,7 +917,8 @@ function generatePlan(year, month, federalState) {
     });
   }
 
-  const weeklyShiftStart = estimateInitialWeeklyShift(context.weeks[0]);
+  // FIX: pass previousPlan to get correct initial shift based on last month's assignments
+  const weeklyShiftStart = estimateInitialWeeklyShift(context.weeks[0], previousPlan);
   const monthStartDate = new Date(year, month - 1, 1);
 
   context.weeks.forEach((week, weekIndex) => {
@@ -951,6 +988,9 @@ function generatePlan(year, month, federalState) {
       }
     }
 
+    // Weekday holiday check: employees still get a free day even in holiday weeks
+    const weekHolidays = planWeekdays.filter(d => !!holidays[d.date]);
+
     for (const day of planWeekdays) {
       const date = day.date;
 
@@ -961,6 +1001,7 @@ function generatePlan(year, month, federalState) {
       const availableEmployees = state.employees.filter(e => !unavailable.has(e.id));
 
       if (holidayToday) {
+        // Holiday: everyone gets 'H', but free day entitlement is NOT consumed
         state.employees.forEach(emp => {
           employeeMap.get(emp.id).assignments[date] = unavailable.has(emp.id) ? absenceCodeFor(emp.id, date, holidays) : 'H';
         });
@@ -1034,6 +1075,8 @@ function generatePlan(year, month, federalState) {
       });
     }
 
+    // Second pass: guarantee every employee gets exactly one free day per week.
+    // Feiertag-Wochen: holiday days don't consume the free day entitlement.
     const employeesNeedingWeekFree = state.employees.filter(emp => {
       const absentAllWeek = week.days.filter(d => d.weekday < 6).every(d => ['U', 'K', 'W'].includes(employeeMap.get(emp.id).assignments[d.date]));
       const hasWeekFreeNow = week.days.filter(d => d.weekday < 6).some(d => employeeMap.get(emp.id).assignments[d.date] === 'FR') || allWeekFreeFromHistory.has(emp.id);
@@ -1054,17 +1097,17 @@ function generatePlan(year, month, federalState) {
             const currentCode = employeeMap.get(emp.id).assignments[date];
             if (!['F', 'S', 'SO'].includes(currentCode)) return false;
 
-            const availableEmployees = state.employees.filter(e => !unavailable.has(e.id));
-            const minWorking = unavailable.size > 0 ? 3 : 4;
-            const currentFrEmployees = availableEmployees.filter(e => employeeMap.get(e.id).assignments[date] === 'FR');
+            const avail = state.employees.filter(e => !unavailable.has(e.id));
+            const minWork = unavailable.size > 0 ? 3 : 4;
 
-            if (currentFrEmployees.length > 0) return false;
-            if ((availableEmployees.length - 1) < minWorking) return false;
+            // FIX: allow multiple FR on same day as long as minimum staffing is met
+            const currentFrCount = avail.filter(e => employeeMap.get(e.id).assignments[date] === 'FR').length;
+            if ((avail.length - currentFrCount - 1) < minWork) return false;
 
             return true;
           })
           .sort((a, b) =>
-            getDayLoadScore(a.date, employeeMap, week, year, month) - getDayLoadScore(b.date, employeeMap, week, year, month) ||
+            getDayLoadScore(a.date, employeeMap, week, year, month, holidays) - getDayLoadScore(b.date, employeeMap, week, year, month, holidays) ||
             getWeekday(a.date) - getWeekday(b.date)
           );
 
@@ -1073,8 +1116,25 @@ function generatePlan(year, month, federalState) {
 
         employeeMap.get(emp.id).assignments[bestDay.date] = 'FR';
         allWeekFreeFromHistory.add(emp.id);
+
+        // FIX: re-balance shifts for that day after removing this employee from working pool
+        const dayUnavailable = new Set(unavailableEmployees(bestDay.date));
+        const dayWorkingIds = state.employees
+          .filter(e => !dayUnavailable.has(e.id) && e.id !== emp.id)
+          .filter(e => employeeMap.get(e.id).assignments[bestDay.date] !== 'FR')
+          .filter(e => ['F', 'S', 'SO'].includes(employeeMap.get(e.id).assignments[bestDay.date]))
+          .map(e => e.id);
+
+        if (dayWorkingIds.length >= 2) {
+          const dayLateMin = Math.min(
+            Math.max(state.settings.staffing.minLate, dayWorkingIds.length >= 3 ? 2 : 1),
+            Math.max(1, dayWorkingIds.length - 1)
+          );
+          assignShiftsForDay(bestDay.date, dayWorkingIds, dayLateMin, desiredShift, employeeMap, groups);
+        }
       });
 
+    // Saturday assignments
     if (saturdayInWeek) {
       const date = saturdayInWeek.date;
       const unavailable = new Set(unavailableEmployees(date));
@@ -1094,6 +1154,7 @@ function generatePlan(year, month, federalState) {
       });
     }
 
+    // Sunday
     const sunday = week.days.find(d => d.weekday === 6 && isInTargetMonth(d.date, year, month));
     if (sunday) {
       state.employees.forEach(emp => {
@@ -1110,10 +1171,14 @@ function generatePlan(year, month, federalState) {
     assignments: cropAssignmentsToMonth(employeeMap.get(emp.id).assignments, year, month)
   }));
 
-  const summary = employees.map(emp => ({
-    name: emp.name,
-    ...calculateHours(emp.assignments, year, month, federalState, state.settings.hours)
-  }));
+  // FIX: pass full employee object to calculateHours for correct isSpecialDay per employee
+  const summary = employees.map(emp => {
+    const fullEmp = state.employees.find(e => e.id === emp.id);
+    return {
+      name: emp.name,
+      ...calculateHours(emp.assignments, year, month, federalState, state.settings.hours, fullEmp)
+    };
+  });
 
   const carryoverAssignments = [];
   state.employees.forEach(emp => {
@@ -1151,9 +1216,8 @@ function assignShiftsForDay(date, workingIds, lateMin, desiredShift, employeeMap
     .sort((a, b) => b.length - a.length);
 
   for (const group of sortedGroups) {
-    const currentLateSize = late.size;
     const remainingAfter = workingIds.length - (late.size + early.size + group.length);
-    const needLate = lateMin - currentLateSize;
+    const needLate = lateMin - late.size;
     if (desiredFirst === 'S' && needLate > 0) {
       group.forEach(id => late.add(id));
     } else if (desiredFirst === 'F' && early.size === 0) {
@@ -1192,12 +1256,14 @@ function assignShiftsForDay(date, workingIds, lateMin, desiredShift, employeeMap
   });
 }
 
-function calculateHours(assignments, year, month, federalState, hourSettings) {
+// FIX: added employee parameter so isSpecialDay is checked per-employee
+function calculateHours(assignments, year, month, federalState, hourSettings, employee) {
   const holidays = getHolidayMap(year, federalState);
   let soll = 0, ist = 0;
   Object.entries(assignments).forEach(([date, code]) => {
     const weekday = getWeekday(date);
-    const special = isSpecialDay(date);
+    // FIX: pass employee to isSpecialDay for per-employee special day check
+    const special = isSpecialDay(date, employee);
     const holiday = !!holidays[date];
     if (weekday === 6) return;
     if (special) {
@@ -1220,9 +1286,7 @@ function calculateHours(assignments, year, month, federalState, hourSettings) {
       }
       return;
     }
-    if (holiday) {
-      return;
-    }
+    if (holiday) return;
     if (['F', 'S', 'SO'].includes(code)) {
       soll += hourSettings.weekdayPresent.soll;
       ist += hourSettings.weekdayPresent.ist;
@@ -1272,14 +1336,20 @@ function buildMonthContext(year, month) {
   return { weeks, extendedStart: start, extendedEnd: end };
 }
 
-function estimateInitialWeeklyShift(firstWeek) {
-  const prevWeekStart = new Date(new Date(firstWeek.days[0].date));
-  prevWeekStart.setDate(prevWeekStart.getDate() - 7);
-  const iso = formatIso(prevWeekStart);
-  const previousPlans = state.plans;
-  for (const plan of previousPlans) {
-    const any = plan.employees.some(emp => emp.assignments[iso] === 'F');
-    if (any) return 'S';
+// FIX: use previousPlan's last F/S assignment to determine correct shift start,
+// avoiding cases where a single date lookup lands on a holiday or free day.
+function estimateInitialWeeklyShift(firstWeek, previousPlan) {
+  if (previousPlan) {
+    // Find the most recent working shift (F or S) across all employees in the previous plan
+    const lastShiftEntry = previousPlan.employees
+      .flatMap(emp => Object.entries(emp.assignments || {}))
+      .filter(([, code]) => code === 'F' || code === 'S')
+      .sort(([a], [b]) => b.localeCompare(a))[0]; // sort descending by date
+
+    if (lastShiftEntry) {
+      // Opposite of last month's final shift = this month's starting shift
+      return lastShiftEntry[1] === 'F' ? 'S' : 'F';
+    }
   }
   return 'F';
 }
@@ -1450,8 +1520,9 @@ function formatIso(date) {
   return `${y}-${m}-${d}`;
 }
 
+// FIX: use T12:00:00 to avoid UTC-offset edge cases on midnight parsing
 function getWeekday(dateString) {
-  const date = new Date(dateString);
+  const date = new Date(dateString + 'T12:00:00');
   return (date.getDay() + 6) % 7;
 }
 
@@ -1460,20 +1531,21 @@ function toMonthInput(year, month) {
 }
 
 function isInTargetMonth(date, year, month) {
-  const d = new Date(date);
+  const d = new Date(date + 'T12:00:00');
   return d.getFullYear() === year && d.getMonth() + 1 === month;
 }
 
+// FIX: use year 2000 instead of hardcoded 2026
 function monthName(month) {
-  return new Date(2026, month - 1, 1).toLocaleDateString('de-DE', { month: 'long' });
+  return new Date(2000, month - 1, 1).toLocaleDateString('de-DE', { month: 'long' });
 }
 
 function formatDate(date) {
-  return new Date(date).toLocaleDateString('de-DE');
+  return new Date(date + 'T12:00:00').toLocaleDateString('de-DE');
 }
 
 function formatPlanDayLabel(date) {
-  const d = new Date(date + 'T00:00:00');
+  const d = new Date(date + 'T12:00:00');
   const day = String(d.getDate()).padStart(2, '0');
   const month = d.toLocaleDateString('de-DE', { month: 'short' }).replace('.', '');
   return `${day} ${month.charAt(0).toUpperCase() + month.slice(1)}`;
@@ -1487,14 +1559,14 @@ function getPlanDisplayValue(code, date, shifts, holidays) {
   }
   if (code === 'F') {
     const shift = weekday === 5 ? shifts.saturday : shifts.early;
-    return { text: `${shift.start}-${shift.end}`, className: 'F' };
+    return { text: `${shift.start}–${shift.end}`, className: 'F' };
   }
-  if (code === 'S') return { text: `${shifts.late.start}-${shifts.late.end}`, className: 'S' };
-  if (code === 'FR') return { text: 'F', className: 'FR' };
+  if (code === 'S') return { text: `${shifts.late.start}–${shifts.late.end}`, className: 'S' };
+  if (code === 'FR') return { text: 'Frei', className: 'FR' };
   if (code === 'U') return { text: 'U', className: 'U' };
   if (code === 'W') return { text: 'W', className: 'W' };
   if (code === 'K') return { text: 'K', className: 'K' };
-  if (code === 'SO') return { text: `${shifts.special.start}-${shifts.special.end}`, className: 'SO' };
+  if (code === 'SO') return { text: `${shifts.special.start}–${shifts.special.end}`, className: 'SO' };
   if (code === 'H') return { text: 'FT', className: 'H' };
   return { text: '—', className: 'empty' };
 }
@@ -1549,8 +1621,8 @@ function totalWeekdayFreeCountInMonth(employeeId, year, month, employeeMap) {
   return count;
 }
 
-
-function getDayLoadScore(date, employeeMap, week, year, month) {
+// FIX: accept pre-computed holidayMap to avoid redundant getHolidayMap calls in tight loop
+function getDayLoadScore(date, employeeMap, week, year, month, holidayMap) {
   const weekday = getWeekday(date);
   if (weekday >= 5) return 9999;
   let score = 0;
@@ -1562,8 +1634,7 @@ function getDayLoadScore(date, employeeMap, week, year, month) {
     if (String(emp.fixedFreeDay) === String(weekday)) score += 3;
   });
 
-  const holidayMap = getHolidayMap(year, state.generation.federalState);
-  if (holidayMap[date]) score += 2;
+  if (holidayMap && holidayMap[date]) score += 2;
 
   return score;
 }
@@ -1603,15 +1674,15 @@ function describeCode(code, day, shifts, holidays) {
   const weekday = getWeekday(date);
   if (code === 'F') {
     const shift = weekday === 5 ? shifts.saturday : shifts.early;
-    return `Arbeitszeit ${shift.start}-${shift.end}`;
+    return `Frühschicht ${shift.start}–${shift.end}`;
   }
-  if (code === 'S') return `Arbeitszeit ${shifts.late.start}-${shifts.late.end}`;
-  if (code === 'FR') return 'Frei';
+  if (code === 'S') return `Spätschicht ${shifts.late.start}–${shifts.late.end}`;
+  if (code === 'FR') return 'Freier Tag';
   if (code === 'U') return 'Urlaub';
   if (code === 'W') return 'Wunschfrei';
   if (code === 'K') return 'Krank';
   if (code === 'H') return 'Feiertag';
-  if (code === 'SO') return `Sondertag ${shifts.special.start}-${shifts.special.end}`;
+  if (code === 'SO') return `Sondertag ${shifts.special.start}–${shifts.special.end}`;
   return 'Keine Zuordnung';
 }
 
