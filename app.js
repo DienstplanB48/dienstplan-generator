@@ -660,41 +660,120 @@ function openPlanModal(id) {
 function sharePdf(id) {
   const plan = state.plans.find(p => p.id === id);
   if (!plan) return;
-  const printable = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(plan.label)}</title><link rel="stylesheet" href="styles.css"><style>
-@page{size:A4 portrait !important;margin:4mm !important}
-html,body{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;background:#fff !important}
-body{font-size:10px !important}
-.topbar,.app-header,.bottom-nav,.right-actions,.no-print{display:none !important}
-.main-content,.content{padding:0 !important;margin:0 !important}
-.card{box-shadow:none !important;border:0 !important;margin:0 !important;padding:0 !important;background:#fff !important}
-.section-title{margin:0 0 3px 0 !important;align-items:flex-start !important}
-.section-title h2,.section-title h3{font-size:10px !important;line-height:1.05 !important;margin:0 !important}
-.muted{font-size:6.2px !important;line-height:1 !important}
-.legend{font-size:6.2px !important;gap:3px !important;margin:4px 0 0 0 !important}
-.badge{padding:1px 4px !important;font-size:6.2px !important;border-radius:999px !important}
-.plan-table-wrap{overflow:visible !important}
-.plan-table{table-layout:fixed !important;width:100% !important;min-width:0 !important;border-collapse:collapse !important;border-spacing:0 !important;border:1px solid #8ea7ca !important;background:#fff !important}
-.plan-table th,.plan-table td{padding:1px 2px !important;font-size:6.0px !important;border:1px solid #8ea7ca !important;text-align:center !important;background:#fff !important}
-.plan-table thead th{background:#d7e3f6 !important;color:#1f2937 !important;font-weight:800 !important}
-.plan-table th:first-child,.plan-table td:first-child{width:46px !important;min-width:46px !important;max-width:46px !important}
-.plan-table tr[style*="background:#d7dde7"] td,.plan-table tr[style*="background:#eef4ff"] td,.plan-table tr[style*="background:#fef3c7"] td{background:#fff !important}
-.plan-header-date{display:flex !important;flex-direction:column !important;gap:0 !important;align-items:flex-start !important}
-.plan-header-date span:first-child{font-size:6px !important;line-height:1 !important;font-weight:700 !important}
-.plan-header-date span:last-child{font-size:5.4px !important;line-height:1 !important;color:#4b5563 !important;font-weight:600 !important}
-.plan-cell{min-width:0 !important;padding:1px 1px !important;font-size:5.6px !important;line-height:1.02 !important;border-radius:7px !important;font-weight:700 !important;box-shadow:none !important}
-.plan-cell.F{background:#dbeafe !important;color:#1d4ed8 !important}
-.plan-cell.S{background:#eee7ff !important;color:#6d28d9 !important}
-.plan-cell.FR{background:#edf0f3 !important;color:#4b5563 !important}
-.plan-cell.U{background:#fff1c7 !important;color:#92400e !important}
-.plan-cell.W{background:#fee2e2 !important;color:#b91c1c !important}
-.plan-cell.K{background:#fecdd3 !important;color:#be123c !important}
-.plan-cell.H{background:#fff1c7 !important;color:#a16207 !important}
-.plan-cell.SO{background:#dcfce7 !important;color:#166534 !important}
-.plan-cell.empty{background:#fff !important;color:#9ca3af !important}
-.summary-table{width:100% !important;border-collapse:collapse !important;margin-top:3px !important;page-break-inside:avoid !important}
-.summary-table th,.summary-table td{padding:2px 3px !important;font-size:6.2px !important;border-bottom:1px solid #d1d5db !important;background:#fff !important}
-</style></head><body><main class="main-content">${renderPlanPreview(plan)}</main><script>window.onload=()=>window.print()</script></body></html>`;
+
+  const printable = `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(plan.label)}</title>
+<style>
+@page { size: A4 portrait; margin: 4mm; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #111827;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+* { box-sizing: border-box; }
+.card { margin: 0; padding: 0; border: 0; box-shadow: none; background: #fff; }
+.section-title { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin: 0 0 3px 0; }
+.section-title h3 { margin: 0; font-size: 10px; line-height: 1.05; }
+.muted { font-size: 6.2px; color: #4b5563; line-height: 1; }
+.legend { display:flex; flex-wrap:wrap; gap:3px; margin:4px 0 0 0; font-size:6.2px; }
+.badge { display:inline-flex; align-items:center; padding:1px 4px; border-radius:999px; background:#f3f4f6; font-size:6.2px; font-weight:700; }
+.plan-table-wrap { overflow: visible; }
+.plan-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: 1px solid #8ea7ca;
+  background: #fff;
+}
+.plan-table th, .plan-table td {
+  border: 1px solid #8ea7ca;
+  padding: 1px 2px;
+  text-align: center;
+  font-size: 6px;
+  background: #fff;
+}
+.plan-table thead th {
+  background: #d7e3f6;
+  color: #1f2937;
+  font-weight: 800;
+}
+.plan-table th:first-child, .plan-table td:first-child {
+  width: 46px;
+  min-width: 46px;
+  max-width: 46px;
+}
+.plan-header-date {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: flex-start;
+}
+.plan-header-date span:first-child {
+  font-size: 6px;
+  line-height: 1;
+  font-weight: 700;
+}
+.plan-header-date span:last-child {
+  font-size: 5.4px;
+  line-height: 1;
+  color: #4b5563;
+  font-weight: 600;
+}
+.plan-table tr[style*="background:#d7dde7"] td,
+.plan-table tr[style*="background:#eef4ff"] td,
+.plan-table tr[style*="background:#fef3c7"] td {
+  background: #ffffff !important;
+}
+.plan-cell {
+  min-width: 0;
+  padding: 1px 1px;
+  font-size: 5.6px !important;
+  line-height: 1.02;
+  border-radius: 7px;
+  font-weight: 700;
+  box-shadow: none;
+}
+.plan-cell.F  { background:#dbeafe; color:#1d4ed8; }
+.plan-cell.S  { background:#eee7ff; color:#6d28d9; }
+.plan-cell.FR { background:#edf0f3; color:#4b5563; }
+.plan-cell.U  { background:#fff1c7; color:#92400e; }
+.plan-cell.W  { background:#fee2e2; color:#b91c1c; }
+.plan-cell.K  { background:#fecdd3; color:#be123c; }
+.plan-cell.H  { background:#fff1c7; color:#a16207; }
+.plan-cell.SO { background:#dcfce7; color:#166534; }
+.plan-cell.empty { background:#fff; color:#9ca3af; }
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 3px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.summary-table th, .summary-table td {
+  padding: 2px 3px;
+  font-size: 6.2px;
+  border-bottom: 1px solid #d1d5db;
+  text-align: left;
+  background: #fff;
+}
+</style>
+</head>
+<body>
+<main>${renderPlanPreview(plan)}</main>
+<script>window.onload=()=>window.print()</script>
+</body>
+</html>`;
   const win = window.open('', '_blank');
+  win.document.open();
   win.document.write(printable);
   win.document.close();
 }
