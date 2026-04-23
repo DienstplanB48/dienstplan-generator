@@ -543,6 +543,7 @@ function renderValidation(result) {
 }
 
 function renderPlanPreview(plan, latest = false) {
+  const days = plan.days;
   return `
     <div class="card">
       <div class="section-title">
@@ -552,14 +553,7 @@ function renderPlanPreview(plan, latest = false) {
         </div>
       </div>
       <div class="plan-table-wrap">${renderPlanTable(plan)}</div>
-      <div class="legend">
-        <span class="badge">F = Frei</span>
-        <span class="badge">U = Urlaub</span>
-        <span class="badge">W = Wunschfrei</span>
-        <span class="badge">K = Krank</span>
-        <span class="badge">FT = Feiertag</span>
-        <span class="badge">Sonntag = Sonntag</span>
-      </div>
+      <div class="legend"><span class="badge">F = Früh</span><span class="badge">S = Spät</span><span class="badge">FR = Frei</span><span class="badge">U = Urlaub</span><span class="badge">W = Wunschfrei</span><span class="badge">K = Krank</span><span class="badge">SO = Sondertag</span></div>
       <div style="height:14px"></div>
       ${renderSummaryTable(plan)}
     </div>
@@ -567,39 +561,31 @@ function renderPlanPreview(plan, latest = false) {
 }
 
 function renderPlanTable(plan) {
-  const holidays = new Set(plan.meta.holidays || []);
+  const holidays = new Set(plan.meta.holidays);
   return `
-    <table class="plan-table" style="table-layout:fixed;width:100%">
+    <table class="plan-table">
       <thead>
         <tr>
-          <th style="min-width:80px">Tag</th>
-          ${plan.employees.map(emp => `<th><div class="plan-header-date"><span>${escapeHtml(emp.name)}</span></div></th>`).join('')}
+          <th>Mitarbeiter</th>
+          ${plan.days.map(day => `<th>
+            <div class="plan-header-date">
+              <span>${day.day}</span>
+              <span>${DAYS[new Date(day.date).getDay() === 0 ? 6 : new Date(day.date).getDay()-1]}</span>
+            </div>
+          </th>`).join('')}
         </tr>
       </thead>
       <tbody>
-        ${plan.days.map(day => {
-          const weekday = getWeekday(day.date);
-          const isSunday = weekday === 6;
-          const isSaturday = weekday === 5;
-          const isHoliday = holidays.has(day.date);
-          const rowStyle = isSunday
-            ? 'background:#d7dde7;'
-            : isSaturday
-              ? 'background:#eef4ff;'
-              : isHoliday
-                ? 'background:#fef3c7;'
-                : '';
-          const daySub = isSunday ? 'Sonntag' : isHoliday ? 'FT' : DAYS[weekday];
-          return `<tr style="${rowStyle}">
-            <td style="font-weight:700"><div class="plan-header-date"><span>${formatPlanDayLabel(day.date)}</span><span>${daySub}</span></div></td>
-            ${plan.employees.map(emp => {
-              const code = emp.assignments[day.date] || '';
-              const display = getPlanDisplayValue(code, day.date, plan.meta.settings.shifts, holidays);
-              const title = describeCode(code, day, plan.meta.settings.shifts, holidays);
-              return `<td title="${escapeAttr(title)}"><div class="plan-cell ${display.className}" style="min-width:56px;font-size:0.72rem;line-height:1.15">${escapeHtml(display.text)}</div></td>`;
-            }).join('')}
-          </tr>`;
-        }).join('')}
+        ${plan.employees.map(emp => `<tr>
+          <td><strong>${escapeHtml(emp.name)}</strong></td>
+          ${plan.days.map(day => {
+            const key = day.date;
+            const code = emp.assignments[key] || '';
+            const classes = `${code || 'empty'} ${holidays.has(key) ? 'H' : ''}`;
+            const title = describeCode(code, day, plan.meta.settings.shifts);
+            return `<td title="${escapeAttr(title)}"><div class="plan-cell ${classes}">${code || '—'}</div></td>`;
+          }).join('')}
+        </tr>`).join('')}
       </tbody>
     </table>
   `;
@@ -607,7 +593,7 @@ function renderPlanTable(plan) {
 
 function renderSummaryTable(plan) {
   return `
-    <table class="summary-table" style="font-size:0.9rem">
+    <table class="summary-table">
       <thead><tr><th>Mitarbeiter</th><th>Soll</th><th>Ist</th><th>Mehr / Minus</th></tr></thead>
       <tbody>
         ${plan.summary.map(row => `<tr><td>${escapeHtml(row.name)}</td><td>${formatHours(row.soll)}</td><td>${formatHours(row.ist)}</td><td>${formatSignedHours(row.delta)}</td></tr>`).join('')}
@@ -674,7 +660,40 @@ function openPlanModal(id) {
 function sharePdf(id) {
   const plan = state.plans.find(p => p.id === id);
   if (!plan) return;
-  const printable = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(plan.label)}</title><link rel="stylesheet" href="styles.css"><style>@page{size:A4 landscape;margin:8mm} body{font-size:10px} .card{box-shadow:none;border:1px solid #dbe2ea} .plan-table{table-layout:fixed;width:100%;min-width:0!important} .plan-table th,.plan-table td{padding:4px!important;font-size:10px!important} .plan-table th:first-child,.plan-table td:first-child{min-width:72px!important;max-width:72px!important} .plan-cell{min-width:0!important;font-size:9px!important;line-height:1.15;padding:2px 3px} .summary-table th,.summary-table td{padding:4px 6px!important;font-size:10px!important} .legend{font-size:10px!important} .no-print{display:none!important}</style></head><body><main class="main-content">${renderPlanPreview(plan)}</main><script>window.onload=()=>window.print()</script></body></html>`;
+  const printable = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(plan.label)}</title><link rel="stylesheet" href="styles.css"><style>
+@page{size:A4 portrait;margin:4mm}
+html,body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;background:#fff!important}
+body{font-size:10px}
+.topbar,.app-header,.bottom-nav,.right-actions,.no-print{display:none!important}
+.main-content,.content{padding:0!important;margin:0!important}
+.card{box-shadow:none!important;border:0!important;margin:0!important;padding:0!important;background:#fff!important}
+.section-title{margin:0 0 3px 0!important;align-items:flex-start!important}
+.section-title h2,.section-title h3{font-size:10px!important;margin:0!important;line-height:1.05!important}
+.muted{font-size:6.4px!important;line-height:1!important}
+.legend{font-size:6.4px!important;gap:3px!important;margin:4px 0 0 0!important}
+.badge{padding:1px 4px!important;font-size:6.4px!important;border-radius:999px!important}
+.plan-table-wrap{overflow:visible!important}
+.plan-table{table-layout:fixed!important;width:100%!important;min-width:0!important;border-collapse:collapse!important;border-spacing:0!important;border:1px solid #8ea7ca!important;border-radius:0!important;background:#fff!important}
+.plan-table th,.plan-table td{padding:1px 2px!important;font-size:6.2px!important;border:1px solid #8ea7ca!important;text-align:center!important;background:#fff!important}
+.plan-table thead th{background:#d7e3f6!important;color:#1f2937!important;font-weight:800!important}
+.plan-table th:first-child,.plan-table td:first-child{width:46px!important;min-width:46px!important;max-width:46px!important}
+.plan-table tr[style*="background:#d7dde7"] td,.plan-table tr[style*="background:#eef4ff"] td,.plan-table tr[style*="background:#fef3c7"] td{background:#fff!important}
+.plan-header-date{display:flex!important;flex-direction:column!important;gap:0!important;align-items:flex-start!important}
+.plan-header-date span:first-child{font-size:6.2px!important;line-height:1!important;font-weight:700!important}
+.plan-header-date span:last-child{font-size:5.6px!important;line-height:1!important;color:#4b5563!important;font-weight:600!important}
+.plan-cell{min-width:0!important;padding:1px 1px!important;font-size:5.8px!important;line-height:1.02!important;border-radius:7px!important;font-weight:700!important;box-shadow:none!important}
+.plan-cell.F{background:#dbeafe!important;color:#1d4ed8!important}
+.plan-cell.S{background:#eee7ff!important;color:#6d28d9!important}
+.plan-cell.FR{background:#edf0f3!important;color:#4b5563!important}
+.plan-cell.U{background:#fff1c7!important;color:#92400e!important}
+.plan-cell.W{background:#fee2e2!important;color:#b91c1c!important}
+.plan-cell.K{background:#fecdd3!important;color:#be123c!important}
+.plan-cell.H{background:#fff1c7!important;color:#a16207!important}
+.plan-cell.SO{background:#dcfce7!important;color:#166534!important}
+.plan-cell.empty{background:#fff!important;color:#9ca3af!important}
+.summary-table{width:100%!important;border-collapse:collapse!important;margin-top:3px!important}
+.summary-table th,.summary-table td{padding:2px 3px!important;font-size:6.4px!important;border-bottom:1px solid #d1d5db!important;background:#fff!important}
+</style></head><body><main class="main-content">${renderPlanPreview(plan)}</main><script>window.onload=()=>window.print()</script></body></html>`;
   const win = window.open('', '_blank');
   win.document.write(printable);
   win.document.close();
@@ -852,8 +871,6 @@ function generatePlanAction() {
   }
 }
 
-
-
 function generatePlan(year, month, federalState) {
   const context = buildMonthContext(year, month);
   const holidays = getHolidayMap(year, federalState);
@@ -865,24 +882,7 @@ function generatePlan(year, month, federalState) {
   }
 
   const employeeMap = new Map(state.employees.map(e => [e.id, { ...e, assignments: {}, weeklyShiftPreference: null, saturdayOffCount: 0 }]));
-  const previousPlan = getPreviousMonthPlan(year, month);
-
-  if (previousPlan) {
-    previousPlan.employees.forEach(prevEmp => {
-      const current = employeeMap.get(prevEmp.id);
-      if (!current) return;
-      Object.entries(prevEmp.assignments || {}).forEach(([date, code]) => {
-        if (isInTargetMonth(date, year, month)) current.assignments[date] = code;
-      });
-    });
-    getCarryoverAssignmentsFromPreviousPlan(previousPlan, year, month).forEach(entry => {
-      const current = employeeMap.get(entry.employeeId);
-      if (current) current.assignments[entry.date] = entry.code;
-    });
-  }
-
   const weeklyShiftStart = estimateInitialWeeklyShift(context.weeks[0]);
-  const monthStartDate = new Date(year, month - 1, 1);
 
   context.weeks.forEach((week, weekIndex) => {
     const desiredShift = weekIndex % 2 === 0 ? weeklyShiftStart : oppositeShift(weeklyShiftStart);
@@ -892,10 +892,9 @@ function generatePlan(year, month, federalState) {
       if (seen.has(emp.id)) return;
       if (emp.pairId) {
         const other = state.employees.find(e => e.id === emp.pairId);
-        if (other && !seen.has(other.id)) {
+        if (other) {
           groups.push([emp.id, other.id]);
-          seen.add(emp.id);
-          seen.add(other.id);
+          seen.add(emp.id); seen.add(other.id);
           return;
         }
       }
@@ -903,190 +902,74 @@ function generatePlan(year, month, federalState) {
       seen.add(emp.id);
     });
 
-    const allWeekFreeFromHistory = getExistingWeekFreeFromPreviousPlan(previousPlan, week);
-    state.employees.forEach(emp => {
-      const hasAlreadyFree = week.days.filter(d => d.weekday < 6).some(d => employeeMap.get(emp.id).assignments[d.date] === 'FR');
-      if (hasAlreadyFree) allWeekFreeFromHistory.add(emp.id);
-    });
-
-    const planWeekdaysAll = week.days.filter(d => d.weekday < 5 && new Date(d.date + 'T00:00:00') >= monthStartDate);
-    const rotation = planWeekdaysAll.length ? (weekIndex % planWeekdaysAll.length) : 0;
-    const planWeekdays = planWeekdaysAll.slice(rotation).concat(planWeekdaysAll.slice(0, rotation));
-
-    const saturdayInWeek = week.days.find(d => d.weekday === 5 && new Date(d.date + 'T00:00:00') >= monthStartDate);
-    const saturdayOffEmployeeIds = new Set();
-    const fullVacationWeekIds = new Set(state.employees.filter(e => hasVacationMonFriFullWeek(e.id, week.days)).map(e => e.id));
-
-    if (saturdayInWeek) {
-      const unavailable = new Set(unavailableEmployees(saturdayInWeek.date));
-      const workingCandidates = state.employees.filter(e => !unavailable.has(e.id) && !fullVacationWeekIds.has(e.id));
-      const remainingSaturdayDates = getMonthDays(year, month).filter(d => getWeekday(d) === 5 && d >= saturdayInWeek.date);
-      const remainingSaturdayCount = Math.max(1, remainingSaturdayDates.length);
-      const totalRemainingSaturdayNeed = state.employees
-        .filter(e => e.saturdayRule)
-        .reduce((sum, e) => sum + Math.max(0, 2 - countSaturdayOffsInMonth(e.id, year, month, employeeMap)), 0);
-
-      let offSlots = 0;
-      if (totalRemainingSaturdayNeed > 0) {
-        offSlots = Math.ceil(totalRemainingSaturdayNeed / remainingSaturdayCount);
-      }
-      offSlots = Math.min(offSlots, Math.max(0, workingCandidates.length - 2));
-
-      const eligibleSaturday = state.employees
-        .filter(e => e.saturdayRule)
-        .filter(e => !unavailable.has(e.id))
-        .filter(e => !fullVacationWeekIds.has(e.id))
-        .filter(e => !allWeekFreeFromHistory.has(e.id))
-        .filter(e => countSaturdayOffsInMonth(e.id, year, month, employeeMap) < 2)
-        .sort((a, b) =>
-          countSaturdayOffsInMonth(a.id, year, month, employeeMap) - countSaturdayOffsInMonth(b.id, year, month, employeeMap) ||
-          state.employees.findIndex(x => x.id === a.id) - state.employees.findIndex(x => x.id === b.id)
-        );
-
-      for (const emp of eligibleSaturday) {
-        if (offSlots <= 0) break;
-        saturdayOffEmployeeIds.add(emp.id);
-        allWeekFreeFromHistory.add(emp.id);
-        offSlots -= 1;
-      }
+    const inTargetMonthDays = week.days.filter(d => isInTargetMonth(d.date, year, month));
+    const saturdayInWeek = week.days.find(d => d.weekday === 5 && isInTargetMonth(d.date, year, month));
+    let saturdayOffEmployeeId = null;
+    const eligibleSaturday = state.employees.filter(e => e.saturdayRule && !hasVacationMonFriFullWeek(e.id, week.days));
+    if (saturdayInWeek && eligibleSaturday.length > 0) {
+      saturdayOffEmployeeId = eligibleSaturday.sort((a, b) => (employeeMap.get(a.id).saturdayOffCount - employeeMap.get(b.id).saturdayOffCount) || state.employees.findIndex(x => x.id===a.id) - state.employees.findIndex(x => x.id===b.id))[0].id;
+      employeeMap.get(saturdayOffEmployeeId).saturdayOffCount += 1;
     }
 
-    for (const day of planWeekdays) {
-      const date = day.date;
-
-      if (state.employees.every(emp => !!employeeMap.get(emp.id).assignments[date])) continue;
-
-      const unavailable = new Set(unavailableEmployees(date));
-      const holidayToday = Boolean(holidays[date]);
+    const weekdayFreeAssigned = {};
+    inTargetMonthDays.filter(d => d.weekday < 5).forEach(day => {
+      const unavailable = new Set(unavailableEmployees(day.date));
+      const availGroups = groups.filter(group => group.every(id => !unavailable.has(id)));
       const availableEmployees = state.employees.filter(e => !unavailable.has(e.id));
+      if (availableEmployees.length < 3) throw new Error(`${formatDate(day.date)}: Planung nicht möglich, weniger als 3 Mitarbeiter verfügbar.`);
 
-      if (holidayToday) {
-        state.employees.forEach(emp => {
-          employeeMap.get(emp.id).assignments[date] = unavailable.has(emp.id) ? absenceCodeFor(emp.id, date, holidays) : 'H';
-        });
-        continue;
+      const mustFree = new Set();
+      state.employees.forEach(emp => {
+        if (emp.fixedFreeDay === day.weekday) mustFree.add(emp.id);
+      });
+      if (saturdayOffEmployeeId) {
+        // in der Woche mit Samstag frei kein weiterer Wochentag frei
+        mustFree.delete(saturdayOffEmployeeId);
       }
 
-      if (availableEmployees.length < 3) {
-        state.employees.forEach(emp => {
-          if (unavailable.has(emp.id)) {
-            employeeMap.get(emp.id).assignments[date] = absenceCodeFor(emp.id, date, holidays);
-          }
-        });
-        continue;
-      }
+      const noAdditionalFree = new Set();
+      state.employees.forEach(emp => {
+        if (emp.fixedFreeDay !== '') noAdditionalFree.add(emp.id);
+        if (saturdayOffEmployeeId === emp.id) noAdditionalFree.add(emp.id);
+      });
 
-      const minWorking = unavailable.size > 0 ? 3 : 4;
-      let freeEmployeeId = null;
-
-      const fixedCandidates = state.employees
-        .filter(emp => String(emp.fixedFreeDay) === String(day.weekday))
-        .filter(emp => !unavailable.has(emp.id))
-        .filter(emp => !allWeekFreeFromHistory.has(emp.id))
-        .filter(emp => !saturdayOffEmployeeIds.has(emp.id));
-
-      if (fixedCandidates.length > 0) {
-        const candidate = fixedCandidates
-          .sort((a, b) =>
-            totalWeekdayFreeCountInMonth(a.id, year, month, employeeMap) - totalWeekdayFreeCountInMonth(b.id, year, month, employeeMap) ||
-            state.employees.findIndex(x => x.id === a.id) - state.employees.findIndex(x => x.id === b.id)
-          )
-          .find(emp => (availableEmployees.length - 1) >= minWorking);
-        if (candidate) freeEmployeeId = candidate.id;
-      }
+      const alreadyWeekFree = new Set(Object.keys(weekdayFreeAssigned).filter(id => weekdayFreeAssigned[id]));
+      let freeEmployeeId = [...mustFree][0] || null;
 
       if (!freeEmployeeId) {
-        const flexibleCandidates = state.employees
-          .filter(emp => !unavailable.has(emp.id))
-          .filter(emp => !allWeekFreeFromHistory.has(emp.id))
-          .filter(emp => emp.fixedFreeDay === '' || emp.fixedFreeDay === null || emp.fixedFreeDay === undefined)
-          .filter(emp => !saturdayOffEmployeeIds.has(emp.id))
-          .sort((a, b) =>
-            totalWeekdayFreeCountInMonth(a.id, year, month, employeeMap) - totalWeekdayFreeCountInMonth(b.id, year, month, employeeMap) ||
-            weeklyFreeScore(a.id, week.days, employeeMap, date) - weeklyFreeScore(b.id, week.days, employeeMap, date)
-          );
-
-        const candidate = flexibleCandidates.find(emp => (availableEmployees.length - 1) >= minWorking);
-        if (candidate) freeEmployeeId = candidate.id;
+        const freeCandidates = state.employees.filter(emp => !unavailable.has(emp.id) && !alreadyWeekFree.has(emp.id) && !noAdditionalFree.has(emp.id));
+        freeCandidates.sort((a, b) => weeklyFreeScore(a.id, week.days, employeeMap, day.date) - weeklyFreeScore(b.id, week.days, employeeMap, day.date));
+        freeEmployeeId = freeCandidates[0]?.id || null;
       }
 
-      let workingIds = availableEmployees.map(e => e.id).filter(id => id !== freeEmployeeId);
+      const workingIds = availableEmployees.map(e => e.id).filter(id => id !== freeEmployeeId);
+      if (workingIds.length < 2) throw new Error(`${formatDate(day.date)}: Zu wenige Mitarbeiter nach Zuteilung des freien Tages.`);
+      if (freeEmployeeId) weekdayFreeAssigned[freeEmployeeId] = true;
 
-      if (workingIds.length < minWorking) {
-        freeEmployeeId = null;
-        workingIds = availableEmployees.map(e => e.id);
+      const lateMin = Math.min(state.settings.staffing.minLate, Math.max(1, workingIds.length - 1));
+      if (workingIds.length === 3 && state.settings.staffing.allowSingleEarlyWhenThreePeople) {
+        assignShiftsForDay(day.date, workingIds, lateMin, desiredShift, employeeMap, groups);
+      } else {
+        assignShiftsForDay(day.date, workingIds, lateMin, desiredShift, employeeMap, groups);
       }
 
-      if (freeEmployeeId) {
-        allWeekFreeFromHistory.add(freeEmployeeId);
-        employeeMap.get(freeEmployeeId).assignments[date] = 'FR';
-      }
-
-      const guaranteedLateMin = workingIds.length >= 3 ? 2 : 1;
-      const lateMin = Math.min(
-        Math.max(state.settings.staffing.minLate, guaranteedLateMin),
-        Math.max(1, workingIds.length - 1)
-      );
-      assignShiftsForDay(date, workingIds, lateMin, desiredShift, employeeMap, groups);
-
+      availableEmployees.forEach(emp => {
+        if (emp.id === freeEmployeeId) employeeMap.get(emp.id).assignments[day.date] = 'FR';
+      });
       unavailable.forEach(id => {
-        employeeMap.get(id).assignments[date] = absenceCodeFor(id, date, holidays);
+        employeeMap.get(id).assignments[day.date] = absenceCodeFor(id, day.date, holidays);
       });
-    }
-
-    const employeesNeedingWeekFree = state.employees.filter(emp => {
-      const absentAllWeek = week.days.filter(d => d.weekday < 6).every(d => ['U', 'K', 'W'].includes(employeeMap.get(emp.id).assignments[d.date]));
-      const hasWeekFreeNow = week.days.filter(d => d.weekday < 6).some(d => employeeMap.get(emp.id).assignments[d.date] === 'FR') || allWeekFreeFromHistory.has(emp.id);
-      return !absentAllWeek && !hasWeekFreeNow;
     });
-
-    employeesNeedingWeekFree
-      .sort((a, b) =>
-        totalWeekdayFreeCountInMonth(a.id, year, month, employeeMap) - totalWeekdayFreeCountInMonth(b.id, year, month, employeeMap) ||
-        state.employees.findIndex(x => x.id === a.id) - state.employees.findIndex(x => x.id === b.id)
-      )
-      .forEach(emp => {
-        const candidateDays = planWeekdays
-          .filter(day => {
-            const date = day.date;
-            const unavailable = new Set(unavailableEmployees(date));
-            if (unavailable.has(emp.id)) return false;
-            const currentCode = employeeMap.get(emp.id).assignments[date];
-            if (!['F', 'S', 'SO'].includes(currentCode)) return false;
-
-            const availableEmployees = state.employees.filter(e => !unavailable.has(e.id));
-            const minWorking = unavailable.size > 0 ? 3 : 4;
-            const currentFrEmployees = availableEmployees.filter(e => employeeMap.get(e.id).assignments[date] === 'FR');
-
-            if (currentFrEmployees.length > 0) return false;
-            if ((availableEmployees.length - 1) < minWorking) return false;
-
-            return true;
-          })
-          .sort((a, b) =>
-            getDayLoadScore(a.date, employeeMap, week, year, month) - getDayLoadScore(b.date, employeeMap, week, year, month) ||
-            getWeekday(a.date) - getWeekday(b.date)
-          );
-
-        const bestDay = candidateDays[0];
-        if (!bestDay) return;
-
-        employeeMap.get(emp.id).assignments[bestDay.date] = 'FR';
-        allWeekFreeFromHistory.add(emp.id);
-      });
 
     if (saturdayInWeek) {
       const date = saturdayInWeek.date;
       const unavailable = new Set(unavailableEmployees(date));
-      const workingSaturday = state.employees.filter(emp => !unavailable.has(emp.id) && !saturdayOffEmployeeIds.has(emp.id) && !fullVacationWeekIds.has(emp.id));
-      if (workingSaturday.length < 2) saturdayOffEmployeeIds.clear();
-
       state.employees.forEach(emp => {
         if (unavailable.has(emp.id)) {
           employeeMap.get(emp.id).assignments[date] = absenceCodeFor(emp.id, date, holidays);
           return;
         }
-        if (saturdayOffEmployeeIds.has(emp.id) || fullVacationWeekIds.has(emp.id)) {
+        if (saturdayOffEmployeeId === emp.id || hasVacationMonFriFullWeek(emp.id, week.days)) {
           employeeMap.get(emp.id).assignments[date] = 'FR';
           return;
         }
@@ -1097,7 +980,7 @@ function generatePlan(year, month, federalState) {
     const sunday = week.days.find(d => d.weekday === 6 && isInTargetMonth(d.date, year, month));
     if (sunday) {
       state.employees.forEach(emp => {
-        employeeMap.get(emp.id).assignments[sunday.date] = 'SU';
+        employeeMap.get(emp.id).assignments[sunday.date] = 'FR';
       });
     }
   });
@@ -1115,15 +998,6 @@ function generatePlan(year, month, federalState) {
     ...calculateHours(emp.assignments, year, month, federalState, state.settings.hours)
   }));
 
-  const carryoverAssignments = [];
-  state.employees.forEach(emp => {
-    Object.entries(employeeMap.get(emp.id).assignments || {}).forEach(([date, code]) => {
-      if (!isInTargetMonth(date, year, month)) {
-        carryoverAssignments.push({ employeeId: emp.id, date, code });
-      }
-    });
-  });
-
   return {
     id: uid(),
     createdAt: new Date().toISOString(),
@@ -1134,8 +1008,7 @@ function generatePlan(year, month, federalState) {
     meta: {
       federalState,
       holidays: Object.keys(holidays).filter(d => isInTargetMonth(d, year, month)),
-      settings: structuredClone(state.settings),
-      carryoverAssignments
+      settings: structuredClone(state.settings)
     }
   };
 }
@@ -1235,15 +1108,17 @@ function calculateHours(assignments, year, month, federalState, hourSettings) {
 }
 
 function buildCsv(plan) {
-  const holidays = new Set(plan.meta.holidays || []);
-  const header = ['Tag', ...plan.employees.map(e => e.name)];
-  const rows = plan.days.map(day => [
-    formatPlanDayLabel(day.date),
-    ...plan.employees.map(emp => getPlanDisplayValue(emp.assignments[day.date] || '', day.date, plan.meta.settings.shifts, holidays).text)
-  ]);
-  rows.push([]);
-  rows.push(['Mitarbeiter', 'Soll', 'Ist', 'Delta']);
-  plan.summary.forEach(row => rows.push([row.name, formatHours(row.soll), formatHours(row.ist), formatSignedHours(row.delta)]));
+  const header = ['Mitarbeiter', ...plan.days.map(d => `${String(d.day).padStart(2,'0')}.${String(new Date(plan.days[0].date).getMonth()+1).padStart(2,'0')}`), 'Soll', 'Ist', 'Delta'];
+  const rows = plan.employees.map(emp => {
+    const summary = plan.summary.find(s => s.name === emp.name);
+    return [
+      emp.name,
+      ...plan.days.map(d => emp.assignments[d.date] || ''),
+      summary.soll,
+      summary.ist,
+      summary.delta
+    ];
+  });
   return [header, ...rows].map(row => row.map(csvEscape).join(';')).join('\n');
 }
 
@@ -1472,102 +1347,6 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString('de-DE');
 }
 
-function formatPlanDayLabel(date) {
-  const d = new Date(date + 'T00:00:00');
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = d.toLocaleDateString('de-DE', { month: 'short' }).replace('.', '');
-  return `${day} ${month.charAt(0).toUpperCase() + month.slice(1)}`;
-}
-
-function getPlanDisplayValue(code, date, shifts, holidays) {
-  const weekday = getWeekday(date);
-  if (code === 'SU') return { text: 'Sonntag', className: 'H' };
-  if ((holidays instanceof Set ? holidays.has(date) : holidays?.[date]) && !['U', 'W', 'K'].includes(code)) {
-    return { text: 'FT', className: 'H' };
-  }
-  if (code === 'F') {
-    const shift = weekday === 5 ? shifts.saturday : shifts.early;
-    return { text: `${shift.start}-${shift.end}`, className: 'F' };
-  }
-  if (code === 'S') return { text: `${shifts.late.start}-${shifts.late.end}`, className: 'S' };
-  if (code === 'FR') return { text: 'F', className: 'FR' };
-  if (code === 'U') return { text: 'U', className: 'U' };
-  if (code === 'W') return { text: 'W', className: 'W' };
-  if (code === 'K') return { text: 'K', className: 'K' };
-  if (code === 'SO') return { text: `${shifts.special.start}-${shifts.special.end}`, className: 'SO' };
-  if (code === 'H') return { text: 'FT', className: 'H' };
-  return { text: '—', className: 'empty' };
-}
-
-function getPreviousMonthPlan(year, month) {
-  const prevMonth = month === 1 ? 12 : month - 1;
-  const prevYear = month === 1 ? year - 1 : year;
-  const label = `${monthName(prevMonth)} ${prevYear}`;
-  return state.plans.find(p => p.label === label) || null;
-}
-
-function getExistingWeekFreeFromPreviousPlan(prevPlan, week) {
-  const result = new Set();
-  if (!prevPlan) return result;
-  const overlapDates = week.days.filter(d => d.weekday < 6).map(d => d.date);
-
-  prevPlan.employees.forEach(emp => {
-    const hasFree = Object.entries(emp.assignments || {}).some(([date, code]) => overlapDates.includes(date) && code === 'FR');
-    if (hasFree) result.add(emp.id);
-  });
-
-  (prevPlan.meta?.carryoverAssignments || []).forEach(entry => {
-    if (overlapDates.includes(entry.date) && entry.code === 'FR') {
-      result.add(entry.employeeId);
-    }
-  });
-
-  return result;
-}
-
-function getCarryoverAssignmentsFromPreviousPlan(prevPlan, year, month) {
-  if (!prevPlan) return [];
-  return (prevPlan.meta?.carryoverAssignments || []).filter(entry => isInTargetMonth(entry.date, year, month));
-}
-
-function countSaturdayOffsInMonth(employeeId, year, month, employeeMap) {
-  let count = 0;
-  for (const date of getMonthDays(year, month)) {
-    if (getWeekday(date) !== 5) continue;
-    const code = employeeMap.get(employeeId)?.assignments?.[date];
-    if (['FR', 'U', 'W', 'K'].includes(code)) count += 1;
-  }
-  return count;
-}
-
-function totalWeekdayFreeCountInMonth(employeeId, year, month, employeeMap) {
-  let count = 0;
-  for (const date of getMonthDays(year, month)) {
-    const weekday = getWeekday(date);
-    if (weekday < 5 && employeeMap.get(employeeId)?.assignments?.[date] === 'FR') count += 1;
-  }
-  return count;
-}
-
-
-function getDayLoadScore(date, employeeMap, week, year, month) {
-  const weekday = getWeekday(date);
-  if (weekday >= 5) return 9999;
-  let score = 0;
-
-  state.employees.forEach(emp => {
-    const code = employeeMap.get(emp.id)?.assignments?.[date];
-    if (['U', 'W', 'K'].includes(code)) score += 4;
-    if (code === 'FR') score += 5;
-    if (String(emp.fixedFreeDay) === String(weekday)) score += 3;
-  });
-
-  const holidayMap = getHolidayMap(year, state.generation.federalState);
-  if (holidayMap[date]) score += 2;
-
-  return score;
-}
-
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
@@ -1596,16 +1375,9 @@ function formatSignedHours(value) {
   return `${sign}${Number(value).toFixed(2).replace('.', ',')} h`;
 }
 
-function describeCode(code, day, shifts, holidays) {
-  const date = day.date || day;
-  if (code === 'SU') return 'Sonntag';
-  if ((holidays instanceof Set ? holidays.has(date) : holidays?.[date]) && !['U', 'W', 'K'].includes(code)) return 'Feiertag';
-  const weekday = getWeekday(date);
-  if (code === 'F') {
-    const shift = weekday === 5 ? shifts.saturday : shifts.early;
-    return `Arbeitszeit ${shift.start}-${shift.end}`;
-  }
-  if (code === 'S') return `Arbeitszeit ${shifts.late.start}-${shifts.late.end}`;
+function describeCode(code, day, shifts) {
+  if (code === 'F') return `Früh ${shifts.early.start}-${shifts.early.end}`;
+  if (code === 'S') return `Spät ${shifts.late.start}-${shifts.late.end}`;
   if (code === 'FR') return 'Frei';
   if (code === 'U') return 'Urlaub';
   if (code === 'W') return 'Wunschfrei';
