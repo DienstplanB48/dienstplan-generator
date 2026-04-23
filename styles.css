@@ -127,12 +127,7 @@ textarea { min-height: 90px; resize: vertical; }
 .modal-body { padding: 16px; }
 .pair-row { display: flex; gap: 8px; align-items: center; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-@media print {
-  body { background: white; }
-  .topbar, .bottom-nav, .right-actions, .no-print { display: none !important; }
-  .main-content, .content { padding: 0; }
-  .card { box-shadow: none; border: 0; margin: 0; padding: 0; }
-}
+
 
 .primary.ghost { background: transparent; color: var(--primary); padding: 10px 12px; font-weight: 700; border: 1px dashed #c7d2fe; border-radius: 14px; }
 
@@ -186,24 +181,158 @@ textarea { min-height: 90px; resize: vertical; }
 
 
 
-/* Schritt 1: nur Layout/Druck, keine Logik */
-.plan-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.card-plan-preview{padding:10px}
-
-@media (max-width: 900px){
-  .content{padding:10px 10px 86px}
-  .card-plan-preview{padding:8px}
-  .plan-table th,.plan-table td{padding:3px 4px;font-size:.68rem}
-  .plan-table th:first-child,.plan-table td:first-child{width:72px;min-width:72px;max-width:72px}
-  .plan-table .plan-cell{font-size:.62rem;line-height:1.12}
+/* Schritt 2: nur Druck-/Farblayout, keine Logik */
+.plan-table-wrap{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
 }
 
 @media print{
-  @page{size:A4 portrait;margin:7mm}
-  .plan-table{table-layout:fixed;width:100%;min-width:0;border-width:1px}
-  .plan-table th,.plan-table td{padding:3px 4px !important;font-size:9px !important}
-  .plan-table th:first-child,.plan-table td:first-child{width:66px !important;min-width:66px !important;max-width:66px !important}
-  .plan-table .plan-cell{font-size:8.2px !important;line-height:1.1 !important;padding:2px 2px !important;border-radius:4px}
-  .summary-table th,.summary-table td{padding:4px 5px !important;font-size:9px !important}
-  .legend{font-size:9px !important;gap:4px !important;margin-top:6px !important}
+  @page{
+    size:A4 portrait;
+    margin:4mm;
+  }
+
+  html, body{
+    background:#fff !important;
+    -webkit-print-color-adjust:exact !important;
+    print-color-adjust:exact !important;
+  }
+
+  .topbar, .app-header, .bottom-nav, .right-actions, .no-print{
+    display:none !important;
+  }
+
+  .main-content, .content{
+    padding:0 !important;
+    margin:0 !important;
+  }
+
+  .card{
+    box-shadow:none !important;
+    border:0 !important;
+    margin:0 !important;
+    padding:0 !important;
+    background:#fff !important;
+  }
+
+  .section-title{
+    margin-bottom:4px !important;
+  }
+
+  .section-title h2, .section-title h3{
+    font-size:11px !important;
+    margin:0 !important;
+  }
+
+  .muted{
+    font-size:8px !important;
+  }
+
+  .legend{
+    font-size:7px !important;
+    gap:3px !important;
+    margin-top:4px !important;
+  }
+
+  .badge{
+    padding:2px 5px !important;
+    font-size:7px !important;
+  }
+
+  .plan-table-wrap{
+    overflow:visible !important;
+  }
+
+  .plan-table{
+    table-layout:fixed !important;
+    width:100% !important;
+    min-width:0 !important;
+    border-collapse:collapse !important;
+    border-spacing:0 !important;
+    border:1px solid #8ea7ca !important;
+  }
+
+  .plan-table th,
+  .plan-table td{
+    padding:2px 2px !important;
+    font-size:7px !important;
+    border:1px solid #8ea7ca !important;
+    text-align:center !important;
+  }
+
+  .plan-table th{
+    background:#cfdcf1 !important;
+    color:#1f2937 !important;
+    font-weight:800 !important;
+  }
+
+  .plan-table th:first-child,
+  .plan-table td:first-child{
+    width:52px !important;
+    min-width:52px !important;
+    max-width:52px !important;
+  }
+
+  .plan-header-date{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:1px !important;
+    align-items:flex-start !important;
+  }
+
+  .plan-header-date span:first-child{
+    font-size:7px !important;
+    line-height:1 !important;
+  }
+
+  .plan-header-date span:last-child{
+    font-size:6px !important;
+    line-height:1 !important;
+    color:#4b5563 !important;
+  }
+
+  .plan-cell{
+    min-width:0 !important;
+    padding:1px 1px !important;
+    font-size:6.5px !important;
+    line-height:1.05 !important;
+    border-radius:3px !important;
+    font-weight:700 !important;
+  }
+
+  .plan-cell.F{ background:#dbeafe !important; color:#1d4ed8 !important; }
+  .plan-cell.S{ background:#ede9fe !important; color:#6d28d9 !important; }
+  .plan-cell.FR{ background:#f3f4f6 !important; color:#4b5563 !important; }
+  .plan-cell.U{ background:#fef3c7 !important; color:#92400e !important; }
+  .plan-cell.W{ background:#fee2e2 !important; color:#b91c1c !important; }
+  .plan-cell.K{ background:#fecdd3 !important; color:#be123c !important; }
+  .plan-cell.H{ background:#ffe4e6 !important; color:#be123c !important; }
+  .plan-cell.SO{ background:#dcfce7 !important; color:#166534 !important; }
+  .plan-cell.empty{ background:#fff !important; color:#9ca3af !important; }
+
+  .plan-table tr[style*="background:#d7dde7"] td{
+    background:#d7dde7 !important;
+  }
+
+  .plan-table tr[style*="background:#eef4ff"] td{
+    background:#eef4ff !important;
+  }
+
+  .plan-table tr[style*="background:#fef3c7"] td{
+    background:#fef3c7 !important;
+  }
+
+  .summary-table{
+    width:100% !important;
+    border-collapse:collapse !important;
+    margin-top:4px !important;
+  }
+
+  .summary-table th,
+  .summary-table td{
+    padding:2px 3px !important;
+    font-size:7px !important;
+    border-bottom:1px solid #d1d5db !important;
+  }
 }
