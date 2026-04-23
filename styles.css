@@ -132,7 +132,6 @@ textarea { min-height: 90px; resize: vertical; }
   .topbar, .bottom-nav, .right-actions, .no-print { display: none !important; }
   .main-content, .content { padding: 0; }
   .card { box-shadow: none; border: 0; margin: 0; padding: 0; }
-  @page { size: A4 landscape; margin: 10mm; }
 }
 
 .primary.ghost { background: transparent; color: var(--primary); padding: 10px 12px; font-weight: 700; border: 1px dashed #c7d2fe; border-radius: 14px; }
@@ -183,4 +182,28 @@ textarea { min-height: 90px; resize: vertical; }
   .plan-table th:first-child,.plan-table td:first-child{width:66px;min-width:66px;max-width:66px}
   .plan-table .plan-cell{font-size:8.2px;line-height:1.1;padding:2px 2px;border-radius:4px}
   .summary-table th,.summary-table td{padding:4px 5px;font-size:9px}
+}
+
+
+
+/* Schritt 1: nur Layout/Druck, keine Logik */
+.plan-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.card-plan-preview{padding:10px}
+
+@media (max-width: 900px){
+  .content{padding:10px 10px 86px}
+  .card-plan-preview{padding:8px}
+  .plan-table th,.plan-table td{padding:3px 4px;font-size:.68rem}
+  .plan-table th:first-child,.plan-table td:first-child{width:72px;min-width:72px;max-width:72px}
+  .plan-table .plan-cell{font-size:.62rem;line-height:1.12}
+}
+
+@media print{
+  @page{size:A4 portrait;margin:7mm}
+  .plan-table{table-layout:fixed;width:100%;min-width:0;border-width:1px}
+  .plan-table th,.plan-table td{padding:3px 4px !important;font-size:9px !important}
+  .plan-table th:first-child,.plan-table td:first-child{width:66px !important;min-width:66px !important;max-width:66px !important}
+  .plan-table .plan-cell{font-size:8.2px !important;line-height:1.1 !important;padding:2px 2px !important;border-radius:4px}
+  .summary-table th,.summary-table td{padding:4px 5px !important;font-size:9px !important}
+  .legend{font-size:9px !important;gap:4px !important;margin-top:6px !important}
 }
