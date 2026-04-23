@@ -127,7 +127,13 @@ textarea { min-height: 90px; resize: vertical; }
 .modal-body { padding: 16px; }
 .pair-row { display: flex; gap: 8px; align-items: center; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-
+@media print {
+  body { background: white; }
+  .topbar, .bottom-nav, .right-actions, .no-print { display: none !important; }
+  .main-content, .content { padding: 0; }
+  .card { box-shadow: none; border: 0; margin: 0; padding: 0; }
+  @page { size: A4 landscape; margin: 10mm; }
+}
 
 .primary.ghost { background: transparent; color: var(--primary); padding: 10px 12px; font-weight: 700; border: 1px dashed #c7d2fe; border-radius: 14px; }
 
@@ -181,7 +187,7 @@ textarea { min-height: 90px; resize: vertical; }
 
 
 
-/* Schritt 2: nur Druck-/Farblayout, keine Logik */
+/* Schritt 3: PDF näher an der Foto-Vorlage, weiterhin nur Layout */
 .plan-table-wrap{
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
@@ -190,11 +196,11 @@ textarea { min-height: 90px; resize: vertical; }
 @media print{
   @page{
     size:A4 portrait;
-    margin:4mm;
+    margin:3.5mm;
   }
 
   html, body{
-    background:#fff !important;
+    background:#ffffff !important;
     -webkit-print-color-adjust:exact !important;
     print-color-adjust:exact !important;
   }
@@ -217,27 +223,32 @@ textarea { min-height: 90px; resize: vertical; }
   }
 
   .section-title{
-    margin-bottom:4px !important;
+    margin:0 0 3px 0 !important;
+    align-items:flex-start !important;
   }
 
-  .section-title h2, .section-title h3{
-    font-size:11px !important;
+  .section-title h2,
+  .section-title h3{
+    font-size:10px !important;
     margin:0 !important;
+    line-height:1.05 !important;
   }
 
   .muted{
-    font-size:8px !important;
+    font-size:6.4px !important;
+    line-height:1 !important;
   }
 
   .legend{
-    font-size:7px !important;
+    font-size:6.4px !important;
     gap:3px !important;
-    margin-top:4px !important;
+    margin:4px 0 0 0 !important;
   }
 
   .badge{
-    padding:2px 5px !important;
-    font-size:7px !important;
+    padding:1px 4px !important;
+    font-size:6.4px !important;
+    border-radius:999px !important;
   }
 
   .plan-table-wrap{
@@ -251,88 +262,91 @@ textarea { min-height: 90px; resize: vertical; }
     border-collapse:collapse !important;
     border-spacing:0 !important;
     border:1px solid #8ea7ca !important;
+    border-radius:0 !important;
+    background:#fff !important;
   }
 
   .plan-table th,
   .plan-table td{
-    padding:2px 2px !important;
-    font-size:7px !important;
+    padding:1px 2px !important;
+    font-size:6.2px !important;
     border:1px solid #8ea7ca !important;
     text-align:center !important;
+    background:#ffffff !important;
   }
 
-  .plan-table th{
-    background:#cfdcf1 !important;
+  .plan-table thead th{
+    background:#d7e3f6 !important;
     color:#1f2937 !important;
     font-weight:800 !important;
   }
 
   .plan-table th:first-child,
   .plan-table td:first-child{
-    width:52px !important;
-    min-width:52px !important;
-    max-width:52px !important;
+    width:46px !important;
+    min-width:46px !important;
+    max-width:46px !important;
+  }
+
+  /* komplette Zeilenbalken ausblenden */
+  .plan-table tr[style*="background:#d7dde7"] td,
+  .plan-table tr[style*="background:#eef4ff"] td,
+  .plan-table tr[style*="background:#fef3c7"] td{
+    background:#ffffff !important;
   }
 
   .plan-header-date{
     display:flex !important;
     flex-direction:column !important;
-    gap:1px !important;
+    gap:0 !important;
     align-items:flex-start !important;
   }
 
   .plan-header-date span:first-child{
-    font-size:7px !important;
+    font-size:6.2px !important;
     line-height:1 !important;
+    font-weight:700 !important;
   }
 
   .plan-header-date span:last-child{
-    font-size:6px !important;
+    font-size:5.6px !important;
     line-height:1 !important;
     color:#4b5563 !important;
+    font-weight:600 !important;
   }
 
   .plan-cell{
     min-width:0 !important;
     padding:1px 1px !important;
-    font-size:6.5px !important;
-    line-height:1.05 !important;
-    border-radius:3px !important;
+    font-size:5.8px !important;
+    line-height:1.02 !important;
+    border-radius:7px !important;
     font-weight:700 !important;
+    box-shadow:none !important;
   }
 
+  /* Pastell-Kapseln wie auf der Vorlage */
   .plan-cell.F{ background:#dbeafe !important; color:#1d4ed8 !important; }
-  .plan-cell.S{ background:#ede9fe !important; color:#6d28d9 !important; }
-  .plan-cell.FR{ background:#f3f4f6 !important; color:#4b5563 !important; }
-  .plan-cell.U{ background:#fef3c7 !important; color:#92400e !important; }
+  .plan-cell.S{ background:#eee7ff !important; color:#6d28d9 !important; }
+  .plan-cell.FR{ background:#edf0f3 !important; color:#4b5563 !important; }
+  .plan-cell.U{ background:#fff1c7 !important; color:#92400e !important; }
   .plan-cell.W{ background:#fee2e2 !important; color:#b91c1c !important; }
   .plan-cell.K{ background:#fecdd3 !important; color:#be123c !important; }
-  .plan-cell.H{ background:#ffe4e6 !important; color:#be123c !important; }
+  .plan-cell.H{ background:#fff1c7 !important; color:#a16207 !important; }
   .plan-cell.SO{ background:#dcfce7 !important; color:#166534 !important; }
-  .plan-cell.empty{ background:#fff !important; color:#9ca3af !important; }
-
-  .plan-table tr[style*="background:#d7dde7"] td{
-    background:#d7dde7 !important;
-  }
-
-  .plan-table tr[style*="background:#eef4ff"] td{
-    background:#eef4ff !important;
-  }
-
-  .plan-table tr[style*="background:#fef3c7"] td{
-    background:#fef3c7 !important;
-  }
+  .plan-cell.empty{ background:#ffffff !important; color:#9ca3af !important; }
 
   .summary-table{
     width:100% !important;
     border-collapse:collapse !important;
-    margin-top:4px !important;
+    margin-top:3px !important;
   }
 
   .summary-table th,
   .summary-table td{
     padding:2px 3px !important;
-    font-size:7px !important;
+    font-size:6.4px !important;
     border-bottom:1px solid #d1d5db !important;
+    background:#ffffff !important;
   }
 }
