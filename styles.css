@@ -153,3 +153,44 @@ textarea { min-height: 90px; resize: vertical; }
 @media (max-width:380px){
   .stats-grid,.grid-2,.grid-3{grid-template-columns:1fr}
 }
+
+
+.plan-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.card-plan-preview{padding:10px}
+.plan-preview-head{margin-bottom:8px}
+.plan-legend{margin-top:8px;gap:6px}
+.plan-table-compact{border-collapse:collapse;border-spacing:0;table-layout:fixed;width:100%;min-width:0;background:#fff;border:2px solid #7b97bf}
+.plan-table-compact th,.plan-table-compact td{border:1px solid #8ea7ca;padding:4px 5px;text-align:center;font-size:.74rem}
+.plan-table-compact thead th{background:#cfdcf1;color:#1f2937;font-weight:800}
+.plan-table-compact .day-col{width:78px;min-width:78px;max-width:78px;background:#f7f9fc;text-align:left}
+.plan-table-compact .emp-col{font-size:.78rem}
+.plan-table-compact .row-saturday td{background:#dfeaf8}
+.plan-table-compact .row-sunday td{background:#b8cbe8}
+.plan-table-compact .row-holiday td{background:#d4e1f4}
+.plan-table-compact .plan-cell{min-width:0;border-radius:4px;padding:3px 3px;font-size:.70rem;line-height:1.15;font-weight:700}
+.plan-table-compact .plan-cell.F{background:transparent;color:#374151}
+.plan-table-compact .plan-cell.S{background:transparent;color:#1f2937}
+.plan-table-compact .plan-cell.FR{background:transparent;color:#111827}
+.plan-table-compact .plan-cell.U{background:transparent;color:#7c2d12}
+.plan-table-compact .plan-cell.W{background:transparent;color:#991b1b}
+.plan-table-compact .plan-cell.K{background:transparent;color:#9d174d}
+.plan-table-compact .plan-cell.H,.plan-table-compact .plan-cell.SU{background:transparent;color:#1f4b85}
+.plan-table-compact .plan-cell.empty{background:transparent;color:#9ca3af}
+.summary-table{font-size:.82rem}
+.summary-table th,.summary-table td{padding:6px 5px}
+@media (max-width: 900px){
+  .content{padding:10px 10px 86px}
+  .card-plan-preview{padding:8px}
+  .plan-table-compact th,.plan-table-compact td{padding:3px 4px;font-size:.68rem}
+  .plan-table-compact .day-col{width:72px;min-width:72px;max-width:72px}
+  .plan-table-compact .emp-col{font-size:.72rem}
+  .plan-table-compact .plan-cell{font-size:.62rem}
+}
+@media print{
+  @page{size:A4 portrait;margin:7mm}
+  .plan-table-compact{table-layout:fixed;width:100%;min-width:0;border-width:1px}
+  .plan-table-compact th,.plan-table-compact td{padding:3px 4px;font-size:9px}
+  .plan-table-compact .day-col{width:64px;min-width:64px;max-width:64px}
+  .plan-table-compact .plan-cell{font-size:8.4px;line-height:1.12;padding:2px 2px;border-radius:4px}
+  .summary-table th,.summary-table td{padding:4px 5px;font-size:9px}
+}
